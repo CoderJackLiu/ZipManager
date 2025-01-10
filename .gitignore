@@ -4,3 +4,7 @@
 Source/test.py
 /Source/history.ini
 /Source/settings.ini
+/Output
+/build
+/dist
+ZipManager.spec
