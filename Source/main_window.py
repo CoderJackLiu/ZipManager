@@ -8,7 +8,15 @@ from compression_worker import CompressionWorker
 from config_manager import ConfigManager
 from history_manager import HistoryManager
 from ui_helpers import center_window, setup_table_widget
-
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QToolButton
+from PyQt5.QtCore import QTimer
+import threading
+import keyboard
+import win32gui
+import win32con
+import win32api
+import win32process
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -57,6 +65,20 @@ class MainWindow(QMainWindow):
         self.label.setAcceptDrops(True)
         self.label.dragEnterEvent = self.dragEnterEvent
         self.label.dropEvent = self.dropEvent
+
+        # 启动全局快捷键监听线程
+        self.hotkey_thread = threading.Thread(target=self.listen_hotkey, daemon=True)
+        self.hotkey_thread.start()
+
+        # 添加置顶按钮
+        self.pin_button = QToolButton(self)
+        self.pin_button.setText("📌")
+        self.pin_button.setCheckable(True)  # 切换按钮
+        self.pin_button.toggled.connect(self.toggle_pin)
+
+        # 将置顶按钮添加到标题栏
+        self.setWindowFlags(self.windowFlags() | Qt.CustomizeWindowHint | Qt.WindowMinimizeButtonHint)
+        self.setMenuWidget(self.pin_button)
 
         self.worker = None
 
@@ -148,3 +170,31 @@ class MainWindow(QMainWindow):
         """窗口关闭事件，保存当前窗口大小"""
         self.config_manager.save_window_dimensions(self.width(), self.height())
         event.accept()
+
+    def toggle_pin(self, checked):
+        """切换窗口置顶状态"""
+        if checked:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+        self.show()  # 刷新窗口状态
+
+    def listen_hotkey(self):
+        """监听全局快捷键"""
+        keyboard.add_hotkey("ctrl+shift+f", self.activate_window)
+
+    def activate_window(self):
+        """通过模拟输入激活窗口"""
+        hwnd = int(self.winId())  # 获取窗口句柄
+
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)  # 恢复窗口
+
+        # 模拟 ALT 键以强制切换
+        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_EXTENDEDKEY, 0)
+        win32gui.SetForegroundWindow(hwnd)  # 将窗口置于最前
+        win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_EXTENDEDKEY | win32con.KEYEVENTF_KEYUP, 0)
+
+    def set_hotkey(self, new_hotkey):
+        """动态设置全局快捷键"""
+        keyboard.clear_all_hotkeys()  # 清除旧快捷键
+        keyboard.add_hotkey(new_hotkey, self.activate_window)  # 设置新快捷键
