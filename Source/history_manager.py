@@ -14,14 +14,17 @@ class HistoryManager:
                 for line in file.readlines():
                     file_name, completion_time, source_path = line.strip().split('|')
                     populate_table_row(
-                        table_widget, file_name, completion_time, source_path, cache_path, recompress_callback
+                        table_widget, file_name, completion_time, source_path, cache_path, recompress_callback,
+                        insert_at_top=True  # 始终插入到表格顶部
                     )
             # 启用拖拽功能
             enable_drag_and_drop(table_widget, cache_path)
+
     # 修改 save_history 方法，保存源文件路径
     def save_history(self, table_widget):
+        """保存历史记录"""
         with open(self.history_file, "w") as file:
-            for row in range(table_widget.rowCount()):
+            for row in range(table_widget.rowCount() - 1, -1, -1):  # 从最底部到顶部保存
                 file_name = table_widget.item(row, 0).text()
                 completion_time = table_widget.item(row, 1).text()
                 source_path = table_widget.item(row, 2).text()
@@ -56,3 +59,9 @@ class HistoryManager:
             # 覆盖写入文件
             with open(self.history_file, "w") as file:
                 file.writelines(lines)
+
+    def ensure_history_file_exists(self):
+        """确保历史记录文件存在"""
+        if not os.path.exists(self.history_file):
+            with open(self.history_file, "w") as file:
+                pass  # 创建空文件

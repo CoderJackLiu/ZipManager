@@ -26,9 +26,9 @@ def setup_table_widget(table_widget):
     table_widget.setAcceptDrops(True)
     table_widget.setDefaultDropAction(Qt.CopyAction)
 
-def populate_table_row(table_widget, file_name, completion_time, source_path, cache_path, recompress_callback):
+def populate_table_row(table_widget, file_name, completion_time, source_path, cache_path, recompress_callback, insert_at_top=False):
     """向表格中添加一行，包括文件名、时间、按钮"""
-    row_position = table_widget.rowCount()
+    row_position = 0 if insert_at_top else table_widget.rowCount()
     table_widget.insertRow(row_position)
     table_widget.setItem(row_position, 0, QTableWidgetItem(file_name))
     table_widget.setItem(row_position, 1, QTableWidgetItem(completion_time))

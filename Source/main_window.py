@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         # 加载历史记录
+        self.history_manager.ensure_history_file_exists()
         self.history_manager.load_history(self.table_widget, self.cache_path, self.recompress)
 
         # 拖拽支持
@@ -102,7 +103,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(value)
 
     def add_to_list(self, zip_path, source_path):
-        """添加压缩完成后的文件记录到表格中，避免重复"""
+        """添加压缩完成后的文件记录到表格中"""
         from datetime import datetime
         completion_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         file_name = os.path.basename(zip_path)
@@ -118,13 +119,10 @@ class MainWindow(QMainWindow):
 
         # 不存在则添加新记录
         populate_table_row(
-            self.table_widget, file_name, completion_time, source_path, self.cache_path, self.recompress
+            self.table_widget, file_name, completion_time, source_path, self.cache_path, self.recompress,
+            insert_at_top=True
         )
         self.history_manager.add_entry(file_name, completion_time, source_path)
-
-        self.progress_bar.setValue(0)
-        # 启用拖拽功能
-        enable_drag_and_drop(self.table_widget, self.cache_path)
 
     def recompress(self, source_path, zip_path):
         if not os.path.exists(source_path):
