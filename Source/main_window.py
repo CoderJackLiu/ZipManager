@@ -90,28 +90,33 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(value)
 
     def add_to_list(self, zip_path):
-        """添加压缩完成后的文件记录到表格中"""
+        """添加压缩完成后的文件记录到表格中，避免重复"""
         from datetime import datetime
         completion_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         file_name = os.path.basename(zip_path)
 
+        # 检查是否存在相同的文件名
+        for row in range(self.table_widget.rowCount()):
+            existing_file_name = self.table_widget.item(row, 0).text()
+            if existing_file_name == file_name:
+                # 更新时间
+                self.table_widget.setItem(row, 1, QTableWidgetItem(completion_time))
+                # 更新历史记录
+                self.history_manager.update_entry(file_name, completion_time)
+                return
+
+        # 不存在则添加新记录
         row_position = self.table_widget.rowCount()
         self.table_widget.insertRow(row_position)
         self.table_widget.setItem(row_position, 0, QTableWidgetItem(file_name))
         self.table_widget.setItem(row_position, 1, QTableWidgetItem(completion_time))
-
         self.table_widget.setColumnWidth(0, 370)
         self.table_widget.setColumnWidth(1, 130)
 
-        # 设置拖拽支持
-        self.table_widget.setDragEnabled(True)
-        self.table_widget.setDefaultDropAction(Qt.CopyAction)
-
-        # 添加拖拽事件处理
-        self.table_widget.mouseMoveEvent = self.table_drag_event
-
-        # 调用 add_entry 将记录保存到文件
+        # 添加到历史记录
         self.history_manager.add_entry(file_name, completion_time)
+
+
 
     def table_drag_event(self, event):
         """处理表格拖拽事件"""

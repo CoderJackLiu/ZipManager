@@ -59,3 +59,18 @@ class HistoryManager:
         """添加单个历史记录到文件"""
         with open(self.history_file, "a") as file:
             file.write(f"{file_name}|{completion_time}\n")
+
+    def update_entry(self, file_name, completion_time):
+        """更新历史记录中的文件时间戳"""
+        if os.path.exists(self.history_file):
+            lines = []
+            with open(self.history_file, "r") as file:
+                for line in file.readlines():
+                    name, time = line.strip().split('|')
+                    if name == file_name:
+                        time = completion_time
+                    lines.append(f"{name}|{time}\n")
+            with open(self.history_file, "w") as file:
+                file.writelines(lines)
+
+
