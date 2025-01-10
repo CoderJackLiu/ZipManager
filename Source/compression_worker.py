@@ -4,7 +4,7 @@ import zipfile
 
 class CompressionWorker(QThread):
     progress = pyqtSignal(int)
-    completed = pyqtSignal(str)
+    completed = pyqtSignal(str, str)
 
     def __init__(self, folder_path, output_path):
         super().__init__()
@@ -23,4 +23,4 @@ class CompressionWorker(QThread):
                     zipf.write(file_path, arcname)
                     processed_files += 1
                     self.progress.emit(int((processed_files / total_files) * 100))
-        self.completed.emit(self.output_path)
+        self.completed.emit(self.output_path, self.folder_path)

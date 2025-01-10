@@ -8,15 +8,11 @@ from compression_worker import CompressionWorker
 from config_manager import ConfigManager
 from history_manager import HistoryManager
 from ui_helpers import center_window, setup_table_widget
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QToolButton
-from PyQt5.QtCore import QTimer
 import threading
 import keyboard
 import win32gui
 import win32con
 import win32api
-import win32process
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -58,8 +54,8 @@ class MainWindow(QMainWindow):
         container.setLayout(self.layout)
         self.setCentralWidget(container)
 
-        # 加载历史记录并绑定拖拽功能
-        self.history_manager.load_history(self.table_widget, self.cache_path)
+        # 加载历史记录
+        self.history_manager.load_history(self.table_widget, self.cache_path, self.recompress)
 
         # 拖拽支持
         self.label.setAcceptDrops(True)
@@ -69,16 +65,6 @@ class MainWindow(QMainWindow):
         # 启动全局快捷键监听线程
         self.hotkey_thread = threading.Thread(target=self.listen_hotkey, daemon=True)
         self.hotkey_thread.start()
-
-        # 添加置顶按钮
-        self.pin_button = QToolButton(self)
-        self.pin_button.setText("📌")
-        self.pin_button.setCheckable(True)  # 切换按钮
-        self.pin_button.toggled.connect(self.toggle_pin)
-
-        # 将置顶按钮添加到标题栏
-        self.setWindowFlags(self.windowFlags() | Qt.CustomizeWindowHint | Qt.WindowMinimizeButtonHint)
-        self.setMenuWidget(self.pin_button)
 
         self.worker = None
 
@@ -111,7 +97,7 @@ class MainWindow(QMainWindow):
         """更新进度条"""
         self.progress_bar.setValue(value)
 
-    def add_to_list(self, zip_path):
+    def add_to_list(self, zip_path, source_path):
         """添加压缩完成后的文件记录到表格中，避免重复"""
         from datetime import datetime
         completion_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -124,7 +110,7 @@ class MainWindow(QMainWindow):
                 # 更新时间
                 self.table_widget.setItem(row, 1, QTableWidgetItem(completion_time))
                 # 更新历史记录
-                self.history_manager.update_entry(file_name, completion_time)
+                self.history_manager.update_entry(file_name, completion_time,source_path)
                 return
 
         # 不存在则添加新记录
@@ -132,13 +118,24 @@ class MainWindow(QMainWindow):
         self.table_widget.insertRow(row_position)
         self.table_widget.setItem(row_position, 0, QTableWidgetItem(file_name))
         self.table_widget.setItem(row_position, 1, QTableWidgetItem(completion_time))
-        self.table_widget.setColumnWidth(0, 370)
-        self.table_widget.setColumnWidth(1, 130)
 
+
+        # 添加重新压缩按钮
+        button = QPushButton("重新压缩")
+        button.clicked.connect(lambda: self.recompress(source_path, zip_path))
+        self.table_widget.setCellWidget(row_position, 2, button)
+
+        self.table_widget.setColumnWidth(0, 350)
+        self.table_widget.setColumnWidth(1, 150)
+        self.table_widget.setColumnWidth(2, 30)
         # 添加到历史记录
-        self.history_manager.add_entry(file_name, completion_time)
+        self.history_manager.add_entry(file_name, completion_time,source_path)
 
-
+    def recompress(self, source_path, zip_path):
+        if not os.path.exists(source_path):
+            QMessageBox.warning(self, "错误", "源文件路径不存在，无法重新压缩！")
+            return
+        self.compress_folder(source_path)
 
     def table_drag_event(self, event):
         """处理表格拖拽事件"""

@@ -12,8 +12,8 @@ def center_window(window):
 
 def setup_table_widget(table_widget):
     """初始化表格控件"""
-    table_widget.setColumnCount(2)  # 两列：文件路径和完成时间
-    table_widget.setHorizontalHeaderLabels(["压缩文件路径", "完成时间"])
+    table_widget.setColumnCount(3)  # 3列：文件路径和完成时间 操作
+    table_widget.setHorizontalHeaderLabels(["压缩文件路径", "完成时间","操作"])
     table_widget.horizontalHeader().setStretchLastSection(True)
     table_widget.setEditTriggers(QTableWidget.NoEditTriggers)  # 禁止编辑
     table_widget.setSelectionBehavior(QTableWidget.SelectRows)  # 整行选择
