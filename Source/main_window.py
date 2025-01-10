@@ -7,7 +7,7 @@ from PyQt5.QtCore import Qt, QMimeData, QUrl
 from compression_worker import CompressionWorker
 from config_manager import ConfigManager
 from history_manager import HistoryManager
-from ui_helpers import center_window, setup_table_widget
+from ui_helpers import center_window, setup_table_widget, populate_table_row, enable_drag_and_drop
 import threading
 import keyboard
 import win32gui
@@ -81,16 +81,20 @@ class MainWindow(QMainWindow):
                 self.compress_folder(folder_path)
 
     def compress_folder(self, folder_path):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.warning(self, "提示", "当前有任务正在运行，请稍后再试！")
+            return
+
         if not self.cache_path:
             QMessageBox.warning(self, "提示", "请先设置缓存路径！")
-            self.set_cache_path()  # 跳转到设置缓存路径界面
-            if not self.cache_path:  # 如果用户取消了设置路径，则直接返回
+            self.set_cache_path()
+            if not self.cache_path:
                 return
 
         output_path = os.path.join(self.cache_path, os.path.basename(folder_path) + ".zip")
         self.worker = CompressionWorker(folder_path, output_path)
         self.worker.progress.connect(self.update_progress)
-        self.worker.completed.connect(self.add_to_list)
+        self.worker.completed.connect(lambda: self.add_to_list(output_path, folder_path))
         self.worker.start()
 
     def update_progress(self, value):
@@ -109,27 +113,18 @@ class MainWindow(QMainWindow):
             if existing_file_name == file_name:
                 # 更新时间
                 self.table_widget.setItem(row, 1, QTableWidgetItem(completion_time))
-                # 更新历史记录
-                self.history_manager.update_entry(file_name, completion_time,source_path)
+                self.history_manager.update_entry(file_name, completion_time, source_path)
                 return
 
         # 不存在则添加新记录
-        row_position = self.table_widget.rowCount()
-        self.table_widget.insertRow(row_position)
-        self.table_widget.setItem(row_position, 0, QTableWidgetItem(file_name))
-        self.table_widget.setItem(row_position, 1, QTableWidgetItem(completion_time))
+        populate_table_row(
+            self.table_widget, file_name, completion_time, source_path, self.cache_path, self.recompress
+        )
+        self.history_manager.add_entry(file_name, completion_time, source_path)
 
-
-        # 添加重新压缩按钮
-        button = QPushButton("重新压缩")
-        button.clicked.connect(lambda: self.recompress(source_path, zip_path))
-        self.table_widget.setCellWidget(row_position, 2, button)
-
-        self.table_widget.setColumnWidth(0, 350)
-        self.table_widget.setColumnWidth(1, 150)
-        self.table_widget.setColumnWidth(2, 30)
-        # 添加到历史记录
-        self.history_manager.add_entry(file_name, completion_time,source_path)
+        self.progress_bar.setValue(0)
+        # 启用拖拽功能
+        enable_drag_and_drop(self.table_widget, self.cache_path)
 
     def recompress(self, source_path, zip_path):
         if not os.path.exists(source_path):

@@ -1,8 +1,6 @@
 import os
 
-from PyQt5.QtCore import QMimeData, QUrl, Qt
-from PyQt5.QtGui import QDrag
-from PyQt5.QtWidgets import QTableWidgetItem, QPushButton, QMessageBox
+from ui_helpers import populate_table_row, enable_drag_and_drop
 
 
 class HistoryManager:
@@ -10,58 +8,16 @@ class HistoryManager:
         self.history_file = history_file
 
     def load_history(self, table_widget, cache_path, recompress_callback):
+        """加载历史记录"""
         if os.path.exists(self.history_file):
             with open(self.history_file, "r") as file:
                 for line in file.readlines():
                     file_name, completion_time, source_path = line.strip().split('|')
-                    row_position = table_widget.rowCount()
-                    table_widget.insertRow(row_position)
-                    table_widget.setItem(row_position, 0, QTableWidgetItem(file_name))
-                    table_widget.setItem(row_position, 1, QTableWidgetItem(completion_time))
-
-                    # 添加重新压缩按钮
-                    button = QPushButton("重新压缩")
-                    button.clicked.connect(
-                        lambda _, sp=source_path, zp=os.path.join(cache_path, file_name): recompress_callback(sp, zp))
-                    table_widget.setCellWidget(row_position, 2, button)
-
-                    table_widget.setColumnWidth(0, 350)
-                    table_widget.setColumnWidth(1, 150)
-                    table_widget.setColumnWidth(2, 30)
-
-        # 确保加载的历史记录支持拖拽
-        table_widget.setDragEnabled(True)
-        table_widget.setDefaultDropAction(Qt.CopyAction)
-
-        # 定义拖拽事件
-        def table_drag_event(event):
-            if event.buttons() == Qt.LeftButton:
-                selected_row = table_widget.currentRow()
-                if selected_row != -1:
-                    file_name_item = table_widget.item(selected_row, 0)
-                    if file_name_item:
-                        file_name = file_name_item.text()
-                        file_path = os.path.join(cache_path, file_name)
-
-                        mime_data = QMimeData()
-                        mime_data.setUrls([QUrl.fromLocalFile(file_path)])
-                        drag = QDrag(table_widget)
-                        drag.setMimeData(mime_data)
-                        drag.exec_(Qt.CopyAction)
-
-        # 绑定事件
-        table_widget.mouseMoveEvent = table_drag_event
-
-    def recompress(self, source_path, zip_path):
-        if not os.path.exists(source_path):
-            QMessageBox.warning(None, "错误", "源文件路径不存在，无法重新压缩！")
-            return
-        #调用main_window.py中的compress_folder方法
-
-
-
-
-
+                    populate_table_row(
+                        table_widget, file_name, completion_time, source_path, cache_path, recompress_callback
+                    )
+            # 启用拖拽功能
+            enable_drag_and_drop(table_widget, cache_path)
     # 修改 save_history 方法，保存源文件路径
     def save_history(self, table_widget):
         with open(self.history_file, "w") as file:
